@@ -8,7 +8,7 @@ import java.util.List;
  * Created by leonid on 11/29/16.
  */
 public class ExecutionManagerImpl implements ExecutionManager {
-    private PoolWorker[] threads;
+    private List<PoolWorker> threads;
     private LinkedList<Runnable> queue = new LinkedList<>();
     private int failed;
     private int completed;
@@ -16,10 +16,10 @@ public class ExecutionManagerImpl implements ExecutionManager {
     private int countTasks;
 
     public ExecutionManagerImpl(int poolSize) {
-        threads = new PoolWorker[poolSize];
+        threads = new ArrayList<>(poolSize);
         for (int i = 0; i < poolSize; i++){
-            threads[i] = new PoolWorker();
-            threads[i].start();
+            threads.add(new PoolWorker());
+            threads.get(i).start();
         }
     }
 
@@ -28,6 +28,12 @@ public class ExecutionManagerImpl implements ExecutionManager {
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {
+                if(threads.size() > tasks.length) {
+                    int extra = threads.size() - tasks.length;
+                    for(int i = 0; i < extra; i++){
+                        threads.get(i).stop();
+                    }
+                }
                 for (Runnable task : tasks) {
                     synchronized (queue){
                         Runnable r = new Runnable() {
@@ -100,16 +106,16 @@ public class ExecutionManagerImpl implements ExecutionManager {
                 r = queue.removeFirst();
             }
             r.run();
-            r = null;
-            synchronized (queue){
-                if (!queue.isEmpty()){
+            while (true){
+                r = null;
+                synchronized (queue) {
+                    while(queue.isEmpty()){
+                        stop();
+                    }
                     r = queue.removeFirst();
                 }
-            }
-            if (r != null){
                 r.run();
             }
-
         }
     }
 }
