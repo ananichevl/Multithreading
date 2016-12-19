@@ -20,11 +20,19 @@ public class Main {
                 }
             }
         };
+
+        Runnable callback = new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("Callback");
+            }
+        };
+
         Runnable[] tasks = new Runnable[8];
         for(int i = 0; i < 8; i++){
             tasks[i] = runnable;
         }
-        Context c = manager.execute(runnable, tasks);
+        Context c = manager.execute(callback, tasks);
         System.out.println("Completed = " + c.getCompletedTaskCount());
         try {
             Thread.sleep(1000);

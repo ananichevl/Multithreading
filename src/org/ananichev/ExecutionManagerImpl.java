@@ -25,24 +25,38 @@ public class ExecutionManagerImpl implements ExecutionManager {
 
     @Override
     public Context execute(Runnable callback, Runnable... tasks) {
-        for (Runnable task : tasks) {
-            synchronized (queue){
-                Runnable r = new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            task.run();
-                        }catch (Exception e){
-                            failed++;
-                        }
-                        completed++;
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (Runnable task : tasks) {
+                    synchronized (queue){
+                        Runnable r = new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    task.run();
+                                }catch (Exception e){
+                                    failed++;
+                                }
+                                completed++;
+                            }
+                        };
+                        queue.add(r);
+                        countTasks++;
+                        queue.notify();
                     }
-                };
-                queue.add(r);
-                countTasks++;
-                queue.notify();
+                }
+                for (Thread t : threads){
+                    try {
+                        t.join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                callback.run();
             }
-        }
+        });
+        t.start();
         return new ContextImpl(this);
     }
 
